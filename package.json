@@ -1,0 +1,12 @@
+{
+  "name": "mongoose-schema-updater",
+  "version": "0.0.1",
+  "description": "",
+  "license": "",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "mongoose": "3.8.15"
+  }
+}
