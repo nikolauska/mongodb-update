@@ -1,72 +1,105 @@
 var MongoClient = require('mongodb').MongoClient
- 
-// Connection URL 
-var url = 'mongodb://localhost/test';
+
+var config  = require('./config');
+var updater = require('./config/updater');
+
 // Use connect method to connect to the Server 
-MongoClient.connect(url, function(err, db) {
-  	if(err) {
-  		console.log(err);
-  		return;
-  	}
-  	console.log("Connected correctly to server");
+MongoClient.connect(config.url, function(err, db) {
+    if(err) {
+        console.log('ERROR: ' + err);
+        return;
+    }
+    console.log("INFO: Connected correctly to server");
 
-  	var collection = db.collection('users');
+    var users = db.collection(config.users);
+    var sessions = db.collection(config.sessions);
 
-  	collection.find().toArray(function (err, docs){
-  		var newColl = []; 
-  		for (var i = 0; i < docs.length; i++) {
-  			var doc = docs[i];
+    users.find().toArray(function (err, docs){
 
-  			console.log('------------------OLD DOC--------------------');
-  			console.log(doc);
-  			console.log('---------------------------------------------');
-	        doc.account_type = 'standard';
-	        doc.name = doc.email;
-	        doc.providers = { basic: { email: doc.email, password: doc.password } };
-	        //doc.sessions = [ { user_agent: '', token: doc.token, created_at: new Date() } ];
-	        doc.sessions = [];
-	        doc.created_at = new Date();
-	        doc.edited_at = new Date();
+        // Array for reinserting objects to database
+        var newUsers    = [];
+        var newSessions = []; 
 
-	        // Remove old properties
-	        delete doc._id;
-	        delete doc.email;
-	        delete doc.password;
-	        delete doc.token;
+        for (var i = 0; i < docs.length; i++) {
+            var doc = docs[i];
 
-	        newColl.push(doc);
-	        console.log('------------------NEW DOC--------------------');
-		    console.log(doc);
-		    console.log('---------------------------------------------');     
-		}
+            if(doc.email == null && doc.password == null)
+                console.log('ERROR: Invalid user object');
+            else {
+                console.log('INFO: Adding user document to new collection arrays...');
+                newUsers.push(updater.users(doc));
+                console.log('INFO: Added user document to new collection arrays');
+            }    
+        }
 
-		console.log(doc);
+        if(newUsers.length == 0) {
+            console.log('ERROR: New users array is empty, closing database connection...');
+            db.close();
+            return;
+        }
 
-		collection.remove({}, function(err, result) {
-			if(err) {
-				console.log(err);
-				return;
-				db.close();
-			}
+        console.log("INFO: Removing users collection...");
+        // Remove old objects and drop collection
+        users.remove({}, function(err, result) {
+            if(err) {
+                console.log('ERROR: ' + err);
+                db.close();
+                return;
+            }
+            users.drop();
+            console.log("INFO: Removed users");
 
-		    console.log("Removed the documents");
+            // Insert new user objects
+            users.insert(newUsers, function (err, result) {
+                if (err)
+                    console.log('ERROR: ' + err);
+                else
+                    console.log('INFO: New users created');
 
-		    collection.drop();
+                users.find().toArray(function (err, docs){
 
-		    // Insert some users
-		    collection.insert(newColl, function (err, result) {
-			    if (err) {
-			    	console.log(err);
-			   	} else {
-			        console.log('Inserted documents into the "users" collection');
-			    }
-			    //Close connection
-			    db.close();
-		    });
-		}); 
+                    for (var i = 0; i < docs.length; i++) {
+                        var doc = docs[i];
 
-  		
-  	});
+                        if(doc._id == null)
+                            console.log('ERROR: Invalid user object');
+                        else {
+                            console.log('INFO: Adding session document to new collection arrays...');
+                            newSessions.push(updater.sessions(doc));
+                            console.log('INFO: Added session document to new collection arrays');
+                        }    
+                    }
+
+                    if(newSessions.length == 0) {
+                        console.log('ERROR: New session array is empty, closing database connection...');
+                        db.close();
+                        return;
+                    }
+
+                    // Remove old objects and drop collection
+                    sessions.remove({}, function(err, result) {
+                        if(err) {
+                            console.log('ERROR: ' + err);
+                            db.close();
+                            return;
+                        }
+                        sessions.drop();
+                        console.log("INFO: Removed sessions");
+
+                        // Insert new user objects
+                        sessions.insert(newSessions, function (err, result) {
+                            if (err)
+                                console.log('ERROR: ' + err);
+                            else
+                                console.log('INFO: New sessions created');
+
+                            db.close();
+                        });
+                    });
+                });
+            });
+        });         
+    });
 });
 
  

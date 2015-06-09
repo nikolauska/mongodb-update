@@ -7,6 +7,6 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "mongoose": "3.8.15"
+    "mongodb": "^2.0.33"
   }
 }
