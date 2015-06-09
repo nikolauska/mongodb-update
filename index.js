@@ -1,41 +1,72 @@
 var MongoClient = require('mongodb').MongoClient
-var assert = require('assert');
  
 // Connection URL 
 var url = 'mongodb://localhost/test';
 // Use connect method to connect to the Server 
 MongoClient.connect(url, function(err, db) {
-  assert.equal(null, err);
-  console.log("Connected correctly to server");
+  	if(err) {
+  		console.log(err);
+  		return;
+  	}
+  	console.log("Connected correctly to server");
 
-  var collection = db.collection('users');
+  	var collection = db.collection('users');
 
-  console.log(collection);
+  	collection.find().toArray(function (err, docs){
+  		var newColl = []; 
+  		for (var i = 0; i < docs.length; i++) {
+  			var doc = docs[i];
 
-  function callback(err, docs){
-  	for (var i = 0; i < docs.length; i++) {
-  		var doc = docs[i]
+  			console.log('------------------OLD DOC--------------------');
+  			console.log(doc);
+  			console.log('---------------------------------------------');
 	        doc.account_type = 'standard';
 	        doc.name = doc.email;
 	        doc.providers = { basic: { email: doc.email, password: doc.password } };
-	        doc.sessions = [ { user_agent: '', token: doc.token, created_at: new Date() } ];
+	        //doc.sessions = [ { user_agent: '', token: doc.token, created_at: new Date() } ];
+	        doc.sessions = [];
 	        doc.created_at = new Date();
 	        doc.edited_at = new Date();
 
 	        // Remove old properties
+	        delete doc._id;
 	        delete doc.email;
 	        delete doc.password;
 	        delete doc.token;
 
-	        // Save the updated document
-	        collection.save(doc);
+	        newColl.push(doc);
+	        console.log('------------------NEW DOC--------------------');
+		    console.log(doc);
+		    console.log('---------------------------------------------');     
+		}
 
-	        console.log(doc);
-	};
-  	db.close();
-  }
+		console.log(doc);
 
-  collection.find({}).toArray(callback);
+		collection.remove({}, function(err, result) {
+			if(err) {
+				console.log(err);
+				return;
+				db.close();
+			}
+
+		    console.log("Removed the documents");
+
+		    collection.drop();
+
+		    // Insert some users
+		    collection.insert(newColl, function (err, result) {
+			    if (err) {
+			    	console.log(err);
+			   	} else {
+			        console.log('Inserted documents into the "users" collection');
+			    }
+			    //Close connection
+			    db.close();
+		    });
+		}); 
+
+  		
+  	});
 });
 
  
