@@ -1,3 +1,10 @@
+'use strict';
+
+/**
+ * Updates user document
+ * @param {object} document - document to be edited.
+ * @returns {object} document edited
+ */
 module.exports.users = function (doc) {
 	var doc = JSON.parse(JSON.stringify(doc));
 
@@ -16,11 +23,16 @@ module.exports.users = function (doc) {
     return doc;
 }
 
+/**
+ * Updates session from user info document
+ * @param {object} document - document to be edited.
+ * @returns {object} document edited
+ */
 module.exports.sessions = function (doc) {
 	var doc = JSON.parse(JSON.stringify(doc));
 
 	doc.user = doc._id;
-	doc.user_agent = 'updater';
+	doc.user_agent = 'unknown';
     doc.created_at = new Date();
 
     // Remove old properties
