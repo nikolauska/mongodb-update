@@ -2,10 +2,11 @@
 
 var MongoClient = require('mongodb').MongoClient
 
-var config  = require('./config');
-var updater = require('./config/updater');
+var config   = require('./config');
+var database = require('./database');
+var updater  = require('./updater');
 
-// Use connect method to connect to the Server 
+
 MongoClient.connect(config.url, function(err, db) {
     if(err) {
         console.log('ERROR: ' + err);
@@ -13,8 +14,48 @@ MongoClient.connect(config.url, function(err, db) {
     }
     console.log("INFO: Connected correctly to server");
 
-    var users = db.collection(config.users);
-    var sessions = db.collection(config.sessions);
+    // Update users from old to new schema
+    database.find.users(db, function(users) {
+        updater.users.updateFromOld(users, function(usersNew) {
+
+            // After change we need to add and find users again to get correct new id's
+            database.save.users(db, usersNew, function() {
+                database.find.users(db, function(usersNew) {
+
+                    // Generate map from old and new user id's (needed with boards)
+                    updater.users.idMap(users, usersNew, function(usersMap) {
+
+                        // Add sessions from user info
+                        updater.sessions.addUserSessions(usersNew, function(sessions) {
+                            database.save.sessions(sessions, function() {
+
+                                // Get boards and add boards to user info and boards
+                                database.find.boards(db, function(boards) {
+
+                                    // Update users again with boards
+                                    updater.users.addboards(usersNew, boards, usersMap, function(usersBoards) {
+                                        database.save.users(db, usersBoards, function() {
+
+                                            // Update boards with users
+                                            updater.boards.addUsers(usersNew, boards, usersMap, function(boardsNew) {
+                                                database.save.boards(boardsNew, function() {
+                                                    console.log('SUCCESS');
+                                                    db.close();
+                                                });                                
+                                            });
+                                        });                              
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            }); 
+        });
+    });
+
+
+    
 
     users.find().toArray(function (err, docs){
 
