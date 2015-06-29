@@ -1,21 +1,22 @@
 'use strict';
 
-function addUsers(users, boards, userMap, callback) {
-    for (var i = 0; i < boards.length; i++) {
-        var board = boards[i];
-
-        boards.members = {};
-
-        for (var j = 0; j < users.length; j++) {
-            var user = users[i];
-
-            if(board.created_by == userMap[user._id]) {
-                boards.members[user._id] = 'admin';
-            } 
-        }
-    }
-
-    callback(boards);
+function addUsers(boards, callback) {
+    callback(boards.map(function(board) {
+        return {
+            _id: board._id,
+            name: board.name,
+            size: board.size,
+            background: board.background,
+            customBackground: board.customBackground,
+            accessCode: board.accessCode,
+            members: [{
+                user: board.createdBy,
+                role: 'admin',
+                isActive: false,
+                lastSeen: new Date()
+            }]
+        };
+    }));
 }
 
 module.exports = {
