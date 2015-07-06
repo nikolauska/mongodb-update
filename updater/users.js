@@ -12,6 +12,7 @@ function updateFromOld(users, callback) {
             _id: user._id,
             account_type: 'standard',
             name: user.email,
+            avatar: '',
             providers: {
                 basic: {
                     email: user.email,
